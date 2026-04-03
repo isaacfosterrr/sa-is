@@ -4,6 +4,8 @@ use std::vec;
 pub const S: u8 = 0;
 pub const L: u8 = 1;
 
+// traits needed for using both usize and u8 inputs in functions
+// as_index is a cast to usize for indexing
 pub trait Symbol: Ord + Copy {
     fn as_index(&self) -> usize;
     fn display(&self) -> String;
@@ -66,7 +68,9 @@ pub  fn  print_aligned<T: Symbol>(bytes: &[T], type_map: &[u8], sa: &[usize]) {
     println!();
 }
 
+
 pub fn is_lms(type_map: &[u8], i: usize) -> bool {
+    // checks if suffix at index i is lms (left most s-type symbol)
     if i < 1 || i == usize::MAX {
         return false;
     }
@@ -78,6 +82,8 @@ pub fn is_lms(type_map: &[u8], i: usize) -> bool {
 }
 
 pub  fn  find_types<T: Symbol>(bytes: &[T]) -> Vec<u8> {
+    // types - s or l, index i is s-type if string[i] < string[i+1]
+    // and vice versa for l
     if bytes.is_empty() { return vec![]; }
     let mut type_map: Vec<u8> = vec![0; bytes.len()];
 
@@ -105,6 +111,8 @@ pub  fn  find_lms(type_map: &[u8]) -> Vec<usize>{
 }
 
 pub fn get_frequencies<T: Symbol>(bytes: &[T]) -> Vec<usize> {
+    // finds how many of each character there is in string
+    // by using simple array, since we know size of alphabet
     let mut max_symbol = 0;
     for &b in bytes {
         let v = b.as_index();
@@ -123,6 +131,10 @@ pub fn get_frequencies<T: Symbol>(bytes: &[T]) -> Vec<usize> {
     freq
 }
 pub fn get_heads_tails(freq: &[usize]) -> (Vec<usize>, Vec<usize>) {
+    // finds start and end for each kind of character
+    // so if theres string like "bbbbbbba"
+    // start for b is 0, end is 6
+    // start for a is 7, end is 7
     let mut cur_start = 0;
     let mut heads = vec![0usize; freq.len()];
     let mut tails = vec![0usize; freq.len()];
@@ -150,6 +162,9 @@ pub  fn  place_lms<T: Symbol>(lms: &[usize], mut tails: &mut [usize], bytes: &[T
     sa
 }
 
+
+// induce functions determine position of all non-lms suffixes
+// using lms suffixes, that already placed
 pub  fn  induce_l<T: Symbol>(bytes: &[T], sa: &mut[usize], type_map: &[u8], heads: &mut [usize])  {
     //left to right scan
     for i in 0..bytes.len() {
@@ -185,6 +200,8 @@ pub  fn  induce_s<T: Symbol>(bytes: &[T], sa: &mut[usize], type_map: &[u8], tail
 }
 
 pub fn is_lms_equal<T: Symbol>(bytes: &[T], type_map: &[u8], mut lms_one: usize, mut lms_two: usize) -> bool {
+    // here lms is portion of string that starts with that lms and ends with next lms
+    // whole string made of this lms substrings
     if bytes[lms_one] == bytes[lms_two] {
         lms_one += 1;
         lms_two += 1;
@@ -208,6 +225,9 @@ pub fn is_lms_equal<T: Symbol>(bytes: &[T], type_map: &[u8], mut lms_one: usize,
 }
 
 pub fn summarize<T: Symbol>(guessed_sa: &[usize], bytes: &[T], type_map: &[u8]) -> (Vec<usize>, Vec<usize>, usize) {
+    // assign names, which is just numbers starting with 1
+    // those names are used to determine whether lms are sorted
+    // if names unique - sorted, if not - possibly not sorted yet
     let mut intermidiate_summary: Vec<usize> = vec![usize::MAX; bytes.len()];
     let mut summary: Vec<usize> = Vec::new();
     let mut suffix_offsets: Vec<usize> = Vec::new();
@@ -227,8 +247,8 @@ pub fn summarize<T: Symbol>(guessed_sa: &[usize], bytes: &[T], type_map: &[u8]) 
 
     }
     for (index, &name) in intermidiate_summary.iter().enumerate() {
-        if name != usize::MAX {
-            summary.push(name);
+        if name != usize::MAX { // in summary names go in order lms appear in original string
+            summary.push(name); // and suffix offset tells exactly where they are in original string
             suffix_offsets.push(index);
         }
     }
@@ -251,6 +271,7 @@ pub fn  build_sa_is<T: Symbol>(bytes: &[T]) -> Vec<usize> {
     let mut guessed_sa = place_lms(&lms, &mut tails.clone(), bytes);
     //println!("{:?}", guessed_sa);
     //println!();
+    // first induced sorting place everything in approximately right positions
     induce_l(bytes, &mut guessed_sa, type_map, &mut heads.clone());
     //print_aligned(bytes, type_map, &guessed_sa);
     //println!();
@@ -271,6 +292,7 @@ pub fn  build_sa_is<T: Symbol>(bytes: &[T]) -> Vec<usize> {
     //println!("sorted_lms: {:?}", sorted_lms);
     let (heads, tails) = get_heads_tails(&freq);
     let mut final_sa = place_lms(&sorted_lms, &mut tails.clone(), bytes);
+    // second induced sorting places everithing in exact right place using sorted lms
     induce_l(&bytes, &mut final_sa, type_map, &mut heads.clone());
     induce_s(&bytes, &mut final_sa, type_map, &mut tails.clone());
 
